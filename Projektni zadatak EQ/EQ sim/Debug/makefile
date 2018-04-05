@@ -4,7 +4,10 @@
 
 SHELL = cmd.exe
 
-CG_TOOL_ROOT := D:/ti/ccsv6/tools/compiler/c5500_4.4.1
+CG_TOOL_ROOT := C:/ti/ccsv6/tools/compiler/c5500_4.4.1
+
+GEN_OPTS__FLAG := 
+GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
 "./EZDSP5535_SAR_sim.obj" \
@@ -150,13 +153,13 @@ all: EQ\ sim.out
 EQ\ sim.out: $(OBJS) $(CMD_SRCS) $(LIB_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: C5500 Linker'
-	"D:/ti/ccsv6/tools/compiler/c5500_4.4.1/bin/cl55" -v5515 --memory_model=large -g --define=c5535 --display_error_number --diag_warning=225 --ptrdiff_size=16 -z -m"EQ sim.map" --stack_size=0x200 --heap_size=0x400 -i"D:/ti/ccsv6/tools/compiler/c5500_4.4.1/lib" -i"D:/nastava/OAIS DSP 2/2017-2018/PZ1/Projektni zadatak/EQ sim/c55xx_csl/lib" -i"D:/nastava/OAIS DSP 2/2017-2018/PZ1/Projektni zadatak/EQ sim/lib" -i"D:/ti/ccsv6/tools/compiler/c5500_4.4.1/include" --reread_libs --display_error_number --warn_sections --xml_link_info="EQ sim_linkInfo.xml" --rom_model --sys_stacksize=0x200 -o "EQ sim.out" $(ORDERED_OBJS)
+	"C:/ti/ccsv6/tools/compiler/c5500_4.4.1/bin/cl55" -v5515 --memory_model=large -g --define=c5535 --display_error_number --diag_warning=225 --ptrdiff_size=16 -z -m"EQ sim.map" --stack_size=0x200 --heap_size=0x400 -i"C:/ti/ccsv6/tools/compiler/c5500_4.4.1/lib" -i"D:/Faks/dspOASDPS2/projekat/DSP2/Projektni zadatak EQ/EQ sim/c55xx_csl/lib" -i"D:/Faks/dspOASDPS2/projekat/DSP2/Projektni zadatak EQ/EQ sim/lib" -i"C:/ti/ccsv6/tools/compiler/c5500_4.4.1/include" --reread_libs --display_error_number --warn_sections --xml_link_info="EQ sim_linkInfo.xml" --rom_model --sys_stacksize=0x200 -o "EQ sim.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 EQ\ sim.hex: $(EXE_OUTPUTS)
 	@echo 'Invoking: C5500 Hex Utility'
-	"D:/ti/ccsv6/tools/compiler/c5500_4.4.1/bin/hex55"  -o "EQ sim.hex" $(EXE_OUTPUTS__QUOTED)
+	"C:/ti/ccsv6/tools/compiler/c5500_4.4.1/bin/hex55"  -o "EQ sim.hex" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $@'
 	@echo ' '
 

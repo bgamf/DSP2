@@ -1,10 +1,10 @@
 //////////////////////////////////////////////////////////////////////////////
 // *
 // * Predmetni projekat iz predmeta OAiS DSP 2
-// * Godina: 2017
+// * Godina: 2018
 // *
 // * Zadatak: Ekvalizacija audio signala
-// * Autor:
+// * Autor: Branislav Gamf
 // *                                                                          
 // *                                                                          
 /////////////////////////////////////////////////////////////////////////////
@@ -32,10 +32,61 @@
 Int16 sampleBufferL[AUDIO_IO_SIZE];
 #pragma DATA_ALIGN(sampleBufferR,4)
 Int16 sampleBufferR[AUDIO_IO_SIZE];
+Int16 dirakSample[AUDIO_IO_SIZE];
 
+
+
+
+//0.1 -> jako siroko
+//0.9 jako usko
+
+//za LP i HP 0.9 je jako ravan, a 0.1 jako strm
+
+
+//za frek odabiranja 16000
+float alphaLP = 0.8712037;
+float alphaHP = -0.3033468;
+float alphaPeek = 0.7538961;
+float betaPeek = 0.9146071 ;
+float alphaPeek2 = 0.5769140;
+float betaPeek2 = 0.1155871;
+
+
+Int16 EQLP[AUDIO_IO_SIZE];
+Int16 EQHP[AUDIO_IO_SIZE];
+Int16 EQPeek[AUDIO_IO_SIZE];
+Int16 EQPeek2[AUDIO_IO_SIZE];
+
+Int16 EQx_historyLP[2];
+Int16 EQy_historyLP[2];
+Int16 EQx_historyHP[2];
+Int16 EQy_historyHP[2];
+Int16 EQx_historyPeek[2];
+Int16 EQy_historyPeek[2];
+Int16 EQx_historyPeek2[2];
+Int16 EQy_historyPeek2[2];
+
+
+
+Int16 x_historyLP[2];
+Int16 y_historyLP[2];
+Int16 x_historyHP[2];
+Int16 y_historyHP[2];
+Int16 x_historyPeek[2];
+Int16 y_historyPeek[2];
+Int16 coeffLP[4];
+Int16 coeffHP[4];
+Int16 coeffPeek[6];
+Int16 coeffPeek2[6];
+
+
+Int16 ShellBufferLP[AUDIO_IO_SIZE];
+Int16 ShellBufferHP[AUDIO_IO_SIZE];
+Int16 ShellBufferPeek[AUDIO_IO_SIZE];
 
 void main( void )
 {
+	int i;
 	/* Inicijalizaija razvojne ploce */
     EZDSP5535_init( );
 	
@@ -50,7 +101,7 @@ void main( void )
     /* Inicijalizacija veze sa AIC3204 kodekom (AD/DA) */
     aic3204_hardware_init();
 
-	aic3204_set_input_filename("../input1.pcm");
+	aic3204_set_input_filename("../Multi_Tone.pcm");
     aic3204_set_output_filename("../output1.pcm");
 
     /* Inicijalizacija AIC3204 kodeka */
@@ -61,11 +112,113 @@ void main( void )
     /* Postavljanje vrednosti frekvencije odabiranja i pojacanja na kodeku */
     set_sampling_frequency_and_gain(SAMPLE_RATE, 0);
 
+    //Postavljanje History buffera na 0
+    for(i = 0; i < 2; i++)
+    {
+    	x_historyLP[i] = 0;
+    	y_historyLP[i] = 0;
+
+    	x_historyHP[i] = 0;
+    	y_historyHP[i] = 0;
+
+    	x_historyPeek[i] = 0;
+    	y_historyPeek[i] = 0;
+
+
+    	EQx_historyLP[i] = 0;
+    	EQy_historyLP[i] = 0;
+    	EQx_historyHP[i] = 0;
+    	EQy_historyHP[i] = 0;
+    	EQx_historyPeek[i] = 0;
+    	EQy_historyPeek[i] = 0;
+    	EQx_historyPeek2[i] = 0;
+    	EQy_historyPeek2[i] = 0;
+    }
+
+    for(i = 0; i < AUDIO_IO_SIZE; i++)
+    {
+    	dirakSample[i] = (i == 0? 16000 : 0); 
+    }
+
     while(1)
     {
     	aic3204_read_block(sampleBufferL, sampleBufferR);
 
     	/* Your code here */
+    	/* Generisati koeficijente filtara za karakteristiku alpa = 0.3.
+    	 * Iscrtati prenosnu karakteristiku shelving filtra za K = 8192 (sto odgovara vrednosti 0.25 skaliranoj na opseg int16) i K = 24576
+    	 * Za potrebe iscrtavanja prenosne karakteristike filtra izracunati impulsni odziv dovodjenjem dirakovog impulsa u trajanju od N odbiraka na ulaz filtra.*/
+    	calculateShelvingCoeff(0.3, coeffLP);
+    	for (i = 0; i < AUDIO_IO_SIZE; i++)
+    	{
+    		ShellBufferLP[i] = shelvingLP(dirakSample[i], coeffLP ,x_historyLP, y_historyLP, 24576);
+    	}
+
+
+
+
+
+
+    	/* Generisati koeficijente filtra za karakteristiku alpha = -0.3.
+    	 * Iscrtati prenosnu karakteristiku shelving filtra za K = 8192 (sto odgovara vrednosti 0.25) i K = 24576 (0.75).
+    	 * Za potrebe iscrtavanja prenosne karakteristike filtra izracunati impulsi odziv dovodjenjem dirakovog impulsa u trajanju od N odabiraka na ulaz filtra*/
+    	calculateShelvingCoeff(-0.3, coeffHP);
+    	for (i = 0; i < AUDIO_IO_SIZE; i++)
+		{
+			ShellBufferHP[i] = shelvingHP(dirakSample[i], coeffHP ,x_historyHP, y_historyHP, 24576);
+		}
+
+
+
+
+
+
+    	/* Generisati koeficijente filtra za karakteristiku alpha = 0.7 i beta = 0. (greska?)
+    	 * Iscrtati prenosnu karakteristiku shelving filtra za k = 8192 i k = 24576.
+    	 * Za potrebe iscrtavanja prenosne karakteristike filtra izracunati impulsni odziv dovodjenjem dirakovog impulsa u trajanju od N odbiraka na ulaz filtra */
+    	calculatePeekCoeff(0.7, 0, coeffPeek);
+    	for (i = 0; i < AUDIO_IO_SIZE; i++)
+		{
+			ShellBufferPeek[i] = shelvingPeek(dirakSample[i], coeffPeek ,x_historyPeek, y_historyPeek, 24576);
+		}
+
+
+
+
+
+    	calculateShelvingCoeff(alphaLP, coeffLP);
+    	for (i = 0; i < AUDIO_IO_SIZE; i ++)
+    	{
+    		EQLP[i] = shelvingLP(dirakSample[i], coeffLP, EQx_historyLP, EQy_historyLP, 24576);
+    	}
+
+    	calculatePeekCoeff(alphaPeek, betaPeek, coeffPeek);
+		for (i = 0; i < AUDIO_IO_SIZE; i ++)
+		{
+			EQPeek[i] = shelvingPeek(EQLP[i], coeffPeek, EQx_historyPeek, EQy_historyPeek, 24576);
+		}
+
+    	calculatePeekCoeff(betaPeek2, betaPeek2, coeffPeek2);
+		for (i = 0; i < AUDIO_IO_SIZE; i ++)
+		{
+			EQPeek2[i] = shelvingPeek(EQPeek[i], coeffPeek2, EQx_historyPeek2, EQy_historyPeek2, 24576);
+		}
+
+    	calculateShelvingCoeff(alphaHP, coeffHP);
+		for (i = 0; i < AUDIO_IO_SIZE; i ++)
+		{
+			EQHP[i] = shelvingHP(EQPeek2[i], coeffHP, EQx_historyHP, EQy_historyHP, 24576);
+		}
+
+
+
+
+
+
+
+
+
+    	printf("\n One Sample done \n");
 
 		aic3204_write_block(sampleBufferR, sampleBufferR);
 	}
